@@ -19,14 +19,17 @@ jobs:
           test -n "$MT5_LOGIN" && test -n "$MT5_PASSWORD" && test -n "$MT5_SERVER" && test -n "$API_KEY"
       - name: Start open-source MT5 gateway
         run: |
-          docker run -d --name mt5-demo --rm -p 127.0.0.1:5001:5001             -e MT5_LOGIN -e MT5_PASSWORD -e MT5_SERVER -e API_KEY             -e MT5_ENABLE_ALGO_TRADING=0             elitekaycy/mt5-gateway-api:0.3.10
+          docker volume create mt5-gateway-config
+          docker run -d --name mt5-demo --rm -p 127.0.0.1:5001:5001 -v mt5-gateway-config:/config             -e MT5_LOGIN -e MT5_PASSWORD -e MT5_SERVER -e API_KEY             -e MT5_ENABLE_ALGO_TRADING=0             elitekaycy/mt5-gateway-api:0.3.10
       - name: Verify real broker demo connection without trading
         run: python3 tools/verify_demo_gateway.py
       - name: Diagnose gateway failure (redacted)
         if: failure()
         run: |
           docker inspect mt5-demo --format 'State={{.State.Status}} ExitCode={{.State.ExitCode}}' || true
-          docker logs --tail 100 mt5-demo 2>&1 | sed -E 's/[0-9]{7,}/[REDACTED]/g' | grep -Ei 'error|exception|failed|warning|startup|listen|ready|login|connection' | tail -40 || true
+          docker exec mt5-demo sh -c 'ps aux | grep -E "wine|python|mt5|gunicorn" | grep -v grep | cut -c 1-150' || true
+          docker port mt5-demo || true
+          curl --max-time 5 -s -o /dev/null -w 'HTTP status: %{http_code}\\n' http://127.0.0.1:5001/health/ready || true
       - name: Stop gateway
         if: always()
         run: docker rm -f mt5-demo || true
