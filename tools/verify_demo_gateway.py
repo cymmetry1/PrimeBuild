@@ -16,7 +16,7 @@ def get(path):
         return json.load(response)
 
 def main():
-    deadline = time.monotonic() + 480
+    deadline = time.monotonic() + 150
     last_error = "no response"
     while time.monotonic() < deadline:
         try:
@@ -25,10 +25,10 @@ def main():
                 break
             last_error = "gateway not yet reporting ready/connected"
         except (OSError, urllib.error.HTTPError, ValueError, TimeoutError) as exc:
-            last_error = type(exc).__name__
+            last_error = type(exc).__name__ + (" HTTP " + str(exc.code) if isinstance(exc, urllib.error.HTTPError) else "")
         time.sleep(8)
     else:
-        raise SystemExit("FAIL: gateway not ready after 8 minutes; last error: " + last_error)
+        raise SystemExit("FAIL: gateway not ready after 150 seconds; last error: " + last_error)
 
     try:
         account = get("/account")
