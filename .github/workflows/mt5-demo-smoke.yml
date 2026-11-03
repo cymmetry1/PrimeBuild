@@ -6,7 +6,7 @@ permissions:
 jobs:
   demo-connection:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 8
     env:
       MT5_LOGIN: ${{ secrets.MT5_DEMO_LOGIN }}
       MT5_PASSWORD: ${{ secrets.MT5_DEMO_PASSWORD }}
@@ -27,8 +27,9 @@ jobs:
         if: failure()
         run: |
           docker inspect mt5-demo --format 'State={{.State.Status}} ExitCode={{.State.ExitCode}}' || true
-          docker exec mt5-demo sh -c 'ps aux | grep -E "wine|python|mt5|gunicorn" | grep -v grep | cut -c 1-150' || true
-          docker logs --tail 200 mt5-demo 2>&1 | sed -E 's/[0-9]{7,}/[REDACTED]/g' | grep -Ei 'traceback|exception|fatal|error|failed|import|module|server|bind|listening|starting|ready' | tail -35 || true
+          docker exec mt5-demo sh -c 'ps aux | grep -E "wine|python|mt5|gunicorn|terminal" | grep -v grep | cut -c 1-150' || true
+          docker exec mt5-demo sh -c 'ls -la /tmp/mt5* /config/ 2>/dev/null | head -35' || true
+          docker logs --tail 200 mt5-demo 2>&1 | sed -E 's/[0-9]{7,}/[REDACTED]/g' | grep -Ei 'traceback|exception|fatal|error|failed|import|module|server|bind|listening|starting|ready|resolver|terminal|login|ipc|timeout' | tail -35 || true
           docker port mt5-demo || true
           curl --max-time 5 -s -o /dev/null -w 'HTTP status: %{http_code}\\n' http://127.0.0.1:5001/health/ready || true
       - name: Stop gateway
