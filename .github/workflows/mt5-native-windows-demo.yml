@@ -1,0 +1,27 @@
+name: Native Windows MT5 demo connectivity
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-mt5-demo:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    env:
+      MT5_LOGIN: ${{ secrets.MT5_DEMO_LOGIN }}
+      MT5_PASSWORD: ${{ secrets.MT5_DEMO_PASSWORD }}
+      MT5_SERVER: ${{ secrets.MT5_DEMO_SERVER }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Verify demo secrets exist
+        shell: pwsh
+        run: |
+          if (!$env:MT5_LOGIN -or !$env:MT5_PASSWORD -or !$env:MT5_SERVER) { throw 'Missing demo secrets' }
+      - name: Install native MetaTrader5 Python bridge
+        run: python -m pip install --disable-pip-version-check MetaTrader5
+      - name: Connect and verify demo broker account
+        run: python tools/native_mt5_demo.py
