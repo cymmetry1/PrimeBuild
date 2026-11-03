@@ -1,0 +1,27 @@
+name: MT5 demo broker smoke test
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  demo-connection:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      MT5_LOGIN: ${{ secrets.MT5_DEMO_LOGIN }}
+      MT5_PASSWORD: ${{ secrets.MT5_DEMO_PASSWORD }}
+      MT5_SERVER: ${{ secrets.MT5_DEMO_SERVER }}
+      API_KEY: ${{ secrets.MT5_GATEWAY_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require demo credentials
+        run: |
+          test -n "$MT5_LOGIN" && test -n "$MT5_PASSWORD" && test -n "$MT5_SERVER" && test -n "$API_KEY"
+      - name: Start open-source MT5 gateway
+        run: |
+          docker run -d --name mt5-demo --rm -p 127.0.0.1:5001:5001             -e MT5_LOGIN -e MT5_PASSWORD -e MT5_SERVER -e API_KEY             -e MT5_ENABLE_ALGO_TRADING=0             elitekaycy/mt5-gateway-api:0.3.10
+      - name: Verify real broker demo connection without trading
+        run: python3 tools/verify_demo_gateway.py
+      - name: Stop gateway
+        if: always()
+        run: docker rm -f mt5-demo || true
