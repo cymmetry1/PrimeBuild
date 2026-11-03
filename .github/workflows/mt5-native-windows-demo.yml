@@ -1,6 +1,12 @@
-name: Native Windows MT5 demo connectivity
+name: Native Windows MT5 demo order test
 on:
   workflow_dispatch:
+    inputs:
+      place_demo_trade:
+        description: 'Place and close a minimum-volume demo market order'
+        type: boolean
+        required: true
+        default: true
 permissions:
   contents: read
 jobs:
@@ -11,6 +17,7 @@ jobs:
       MT5_LOGIN: ${{ secrets.MT5_DEMO_LOGIN }}
       MT5_PASSWORD: ${{ secrets.MT5_DEMO_PASSWORD }}
       MT5_SERVER: ${{ secrets.MT5_DEMO_SERVER }}
+      PLACE_DEMO_TRADE: ${{ inputs.place_demo_trade }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -23,5 +30,5 @@ jobs:
           if (!$env:MT5_LOGIN -or !$env:MT5_PASSWORD -or !$env:MT5_SERVER) { throw 'Missing demo secrets' }
       - name: Install native MetaTrader5 Python bridge
         run: python -m pip install --disable-pip-version-check MetaTrader5
-      - name: Connect and verify demo broker account
+      - name: Connect and test demo order lifecycle
         run: python tools/native_mt5_demo.py
