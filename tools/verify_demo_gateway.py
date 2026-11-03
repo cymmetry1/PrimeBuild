@@ -1,4 +1,4 @@
-"""Read-only MT5 demo connection test; never submits an order."""
+"""Read-only demo gateway smoke test. Never sends orders."""
 import json
 import os
 import time
@@ -8,22 +8,32 @@ import urllib.request
 BASE = "http://127.0.0.1:5001"
 
 def get(path):
-    request = urllib.request.Request(BASE + path, headers={"Authorization": "Bearer " + os.environ["API_KEY"]})
-    with urllib.request.urlopen(request, timeout=12) as response:
+    request = urllib.request.Request(
+        BASE + path,
+        headers={"Authorization": "Bearer " + os.environ["API_KEY"]},
+    )
+    with urllib.request.urlopen(request, timeout=8) as response:
         return json.load(response)
 
 def main():
-    for _ in range(48):
+    deadline = time.monotonic() + 480
+    last_error = "no response"
+    while time.monotonic() < deadline:
         try:
             status = get("/health/ready")
             if status.get("status") == "ready" and status.get("mt5_status") == "connected":
                 break
-        except (urllib.error.URLError, TimeoutError, ValueError):
-            pass
-        time.sleep(10)
+            last_error = "gateway not yet reporting ready/connected"
+        except (OSError, urllib.error.HTTPError, ValueError, TimeoutError) as exc:
+            last_error = type(exc).__name__
+        time.sleep(8)
     else:
-        raise SystemExit("FAIL: broker connection not ready after 8 minutes")
-    account = get("/account")
+        raise SystemExit("FAIL: gateway not ready after 8 minutes; last error: " + last_error)
+
+    try:
+        account = get("/account")
+    except (OSError, ValueError) as exc:
+        raise SystemExit("FAIL: account endpoint: " + type(exc).__name__)
     if str(account.get("login", account.get("account", ""))) != str(os.environ["MT5_LOGIN"]):
         raise SystemExit("FAIL: broker account mismatch")
     if account.get("trade_mode", account.get("mode")) not in (0, "0", "demo", "DEMO"):
